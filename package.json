@@ -1,0 +1,10 @@
+{
+  "name": "backup-monitoring-center",
+  "version": "1.0.0",
+  "description": "Централизованный мониторинг Кибер Бекап, RuBackup и Veeam",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  }
+}
