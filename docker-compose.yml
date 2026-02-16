@@ -1,0 +1,14 @@
+version: '3.9'
+services:
+  backup-monitor:
+    build: .
+    container_name: backup-monitor
+    ports:
+      - "3000:3000"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+      CYBER_BACKUP_BASE_URL: http://host.docker.internal:9001
+      RU_BACKUP_BASE_URL: http://host.docker.internal:9002
+      VEEAM_BASE_URL: http://host.docker.internal:9003
+    restart: unless-stopped
