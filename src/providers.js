@@ -27,6 +27,8 @@ const defaultConfig = {
       token: process.env.CYBER_BACKUP_TOKEN || 'demo-token',
       endpoints: {
         jobs: process.env.CYBER_BACKUP_JOBS_PATH || '/api/jobs',
+        tasks: process.env.CYBER_BACKUP_TASKS_PATH || '/api/tasks',
+        actions: process.env.CYBER_BACKUP_ACTIONS_PATH || '/api/activities',
       },
     },
     'ru-backup': {
@@ -52,11 +54,46 @@ function fallbackResult(providerId) {
     timestamp: now - (11 - idx) * 5 * 60_000,
     value: Math.round(10 + Math.random() * 70),
   }));
+
+  const tasks = Array.from({ length: 8 }, (_, idx) => ({
+    id: `${providerId}-task-${idx + 1}`,
+    name: `Задача ${idx + 1}`,
+    status: idx % 4 === 0 ? 'failed' : idx % 3 === 0 ? 'running' : 'success',
+    startedAt: new Date(now - idx * 35 * 60_000).toISOString(),
+    durationMinutes: Math.round(5 + Math.random() * 70),
+    type: 'backup',
+  }));
+
+  const actions = Array.from({ length: 10 }, (_, idx) => ({
+    id: `${providerId}-action-${idx + 1}`,
+    name: `Действие ${idx + 1}`,
+    status: idx % 5 === 0 ? 'warning' : idx % 2 === 0 ? 'success' : 'running',
+    startedAt: new Date(now - idx * 20 * 60_000).toISOString(),
+    durationMinutes: Math.round(1 + Math.random() * 20),
+    type: idx % 2 === 0 ? 'backup' : 'validation',
+  }));
+
   return {
     provider: providerId,
     jobs,
     failedJobs: Math.round(Math.random() * 2),
     successfulJobs: Math.round(10 + Math.random() * 40),
+    tasks,
+    actions,
+    taskStatusSummary: tasks.reduce((acc, item) => {
+      acc[item.status] = (acc[item.status] || 0) + 1;
+      return acc;
+    }, {}),
+    actionStatusSummary: actions.reduce((acc, item) => {
+      acc[item.status] = (acc[item.status] || 0) + 1;
+      return acc;
+    }, {}),
+    actionTypeSummary: actions.reduce((acc, item) => {
+      acc[item.type] = (acc[item.type] || 0) + 1;
+      return acc;
+    }, {}),
+    recentTasks: tasks.slice(0, 5),
+    recentActions: actions.slice(0, 5),
     source: 'fallback',
   };
 }

@@ -11,6 +11,7 @@
     <header>
       <h1>Централизованный мониторинг резервного копирования</h1>
       <div class="toolbar">
+        <button id="cyber-settings-btn">Настройки Кибер Бекап</button>
         <button id="add-widget-btn">Добавить виджет</button>
         <span id="last-update">Обновление: —</span>
       </div>
@@ -37,6 +38,8 @@
             <option value="line">Линейный график</option>
             <option value="bar">Столбчатый график</option>
             <option value="stat">Статистика</option>
+            <option value="cyber-tasks">Кибер Бекап: задачи</option>
+            <option value="cyber-actions">Кибер Бекап: действия</option>
             <option value="grafana">Grafana панель (iframe)</option>
           </select>
         </label>
@@ -44,9 +47,44 @@
           URL панели Grafana
           <input name="grafanaUrl" placeholder="https://grafana.example/d-solo/..." />
         </label>
+        <label id="cyber-filter-wrap" class="hidden">
+          Фильтр статусов (через запятую)
+          <input name="statusFilter" placeholder="running,success,failed" />
+        </label>
+        <label id="max-rows-wrap" class="hidden">
+          Сколько записей показывать
+          <input name="maxRows" type="number" min="1" max="50" value="8" />
+        </label>
 
         <menu>
           <button type="button" value="cancel" id="cancel-btn">Отмена</button>
+          <button type="submit" value="default">Сохранить</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="cyber-settings-dialog">
+      <form method="dialog" id="cyber-settings-form">
+        <h2>Настройки получения данных Кибер Бекап</h2>
+        <p class="hint">
+          Настройте, какие статусы задач/действий считать важными для виджетов.
+          Это помогает быстро сфокусироваться на проблемах и активных операциях.
+        </p>
+        <label>
+          Статусы задач (через запятую)
+          <input name="taskStatuses" placeholder="running,success,failed,warning" required />
+        </label>
+        <label>
+          Статусы действий (через запятую)
+          <input name="actionStatuses" placeholder="running,success,failed,warning" required />
+        </label>
+        <label>
+          Максимум строк в спец-виджетах
+          <input name="maxRows" type="number" min="1" max="50" value="8" required />
+        </label>
+
+        <menu>
+          <button type="button" value="cancel" id="cyber-cancel-btn">Отмена</button>
           <button type="submit" value="default">Сохранить</button>
         </menu>
       </form>

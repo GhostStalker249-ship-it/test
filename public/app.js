@@ -1,13 +1,20 @@
-const storageKey = 'backup-dashboard-widgets-v1';
+const storageKey = 'backup-dashboard-widgets-v2';
 
 const dashboardEl = document.getElementById('dashboard');
 const addWidgetBtn = document.getElementById('add-widget-btn');
+const cyberSettingsBtn = document.getElementById('cyber-settings-btn');
 const lastUpdateEl = document.getElementById('last-update');
+
 const dialog = document.getElementById('widget-dialog');
 const form = document.getElementById('widget-form');
 const providerSelect = form.elements.provider;
 const typeSelect = form.elements.type;
 const grafanaWrap = document.getElementById('grafana-url-wrap');
+const cyberFilterWrap = document.getElementById('cyber-filter-wrap');
+const maxRowsWrap = document.getElementById('max-rows-wrap');
+
+const cyberDialog = document.getElementById('cyber-settings-dialog');
+const cyberForm = document.getElementById('cyber-settings-form');
 
 let providers = [];
 let metrics = {};
@@ -19,13 +26,51 @@ function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
+function loadCyberSettings() {
+  const raw = localStorage.getItem('cyber-settings-v1');
+  if (!raw) {
+    return {
+      taskStatuses: 'running,success,failed,warning',
+      actionStatuses: 'running,success,failed,warning',
+      maxRows: 8,
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      taskStatuses: parsed.taskStatuses || 'running,success,failed,warning',
+      actionStatuses: parsed.actionStatuses || 'running,success,failed,warning',
+      maxRows: Number(parsed.maxRows || 8),
+    };
+  } catch {
+    return {
+      taskStatuses: 'running,success,failed,warning',
+      actionStatuses: 'running,success,failed,warning',
+      maxRows: 8,
+    };
+  }
+}
+
+function saveCyberSettings(settings) {
+  localStorage.setItem('cyber-settings-v1', JSON.stringify(settings));
+}
+
+function parseFilter(filterValue) {
+  return filterValue
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 function loadWidgets() {
   const raw = localStorage.getItem(storageKey);
   if (!raw) {
     return [
-      { id: uid(), title: 'Кибер Бекап: длительность job', provider: 'cyber-backup', type: 'line' },
+      { id: uid(), title: 'Кибер Бекап: длительность задач', provider: 'cyber-backup', type: 'line' },
+      { id: uid(), title: 'Кибер Бекап: задачи', provider: 'cyber-backup', type: 'cyber-tasks', statusFilter: 'running,success,failed', maxRows: 8 },
+      { id: uid(), title: 'Кибер Бекап: действия', provider: 'cyber-backup', type: 'cyber-actions', statusFilter: 'running,success,failed,warning', maxRows: 8 },
       { id: uid(), title: 'RuBackup: статистика', provider: 'ru-backup', type: 'stat' },
-      { id: uid(), title: 'Veeam: длительность job', provider: 'veeam', type: 'bar' },
     ];
   }
   try {
@@ -39,17 +84,26 @@ function saveWidgets() {
   localStorage.setItem(storageKey, JSON.stringify(widgets));
 }
 
+function updateWidgetTypeControls() {
+  const cyberSpecial = typeSelect.value === 'cyber-tasks' || typeSelect.value === 'cyber-actions';
+  grafanaWrap.classList.toggle('hidden', typeSelect.value !== 'grafana');
+  cyberFilterWrap.classList.toggle('hidden', !cyberSpecial);
+  maxRowsWrap.classList.toggle('hidden', !cyberSpecial);
+}
+
 function openDialog(widget = null) {
   editingId = widget?.id || null;
   form.elements.title.value = widget?.title || '';
   form.elements.provider.value = widget?.provider || providers[0]?.id || '';
   form.elements.type.value = widget?.type || 'line';
   form.elements.grafanaUrl.value = widget?.grafanaUrl || '';
-  grafanaWrap.classList.toggle('hidden', form.elements.type.value !== 'grafana');
+  form.elements.statusFilter.value = widget?.statusFilter || '';
+  form.elements.maxRows.value = Number(widget?.maxRows || 8);
+  updateWidgetTypeControls();
   dialog.showModal();
 }
 
-function renderStat(widget, metricData) {
+function renderStat(metricData) {
   const latest = metricData.jobs.at(-1)?.value ?? 0;
   return `
     <div class="stat">
@@ -58,6 +112,102 @@ function renderStat(widget, metricData) {
       <div class="tile"><span>Последняя длительность</span><strong>${latest} мин</strong></div>
       <div class="tile"><span>Источник</span><strong>${metricData.source}</strong></div>
     </div>
+  `;
+}
+
+function renderSummary(summary, emptyLabel = 'нет данных') {
+  const entries = Object.entries(summary || {});
+  if (entries.length === 0) {
+    return `<div class="summary-empty">${emptyLabel}</div>`;
+  }
+
+  return `
+    <div class="summary-grid">
+      ${entries
+        .map(
+          ([key, value]) => `
+            <div class="tile compact">
+              <span>${key}</span>
+              <strong>${value}</strong>
+            </div>
+          `,
+        )
+        .join('')}
+    </div>
+  `;
+}
+
+function filterRows(rows, filterValue, maxRows) {
+  const allowedStatuses = parseFilter(filterValue || '');
+  const filtered = allowedStatuses.length
+    ? rows.filter((row) => allowedStatuses.includes((row.status || '').toLowerCase()))
+    : rows;
+
+  return filtered.slice(0, Number(maxRows || 8));
+}
+
+function renderCyberTable(rows, tableType) {
+  if (!rows.length) {
+    return '<p class="summary-empty">Нет данных для выбранного фильтра.</p>';
+  }
+
+  return `
+    <table class="cyber-table">
+      <thead>
+        <tr>
+          <th>Название</th>
+          <th>Статус</th>
+          <th>${tableType === 'actions' ? 'Тип действия' : 'Тип задачи'}</th>
+          <th>Длительность</th>
+          <th>Старт</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (row) => `
+              <tr>
+                <td>${row.name}</td>
+                <td><span class="status status-${(row.status || 'unknown').replace(/[^a-z0-9-]/gi, '')}">${row.status}</span></td>
+                <td>${row.type || 'n/a'}</td>
+                <td>${row.durationMinutes} мин</td>
+                <td>${new Date(row.startedAt).toLocaleString('ru-RU')}</td>
+              </tr>
+            `,
+          )
+          .join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderCyberTasksWidget(widget, metricData) {
+  const settings = loadCyberSettings();
+  const rows = filterRows(metricData.recentTasks || metricData.tasks || [], widget.statusFilter || settings.taskStatuses, widget.maxRows || settings.maxRows);
+
+  return `
+    <section>
+      <h4>Сводка задач</h4>
+      ${renderSummary(metricData.taskStatusSummary, 'Сводка задач недоступна')}
+      <h4>Последние задачи</h4>
+      ${renderCyberTable(rows, 'tasks')}
+    </section>
+  `;
+}
+
+function renderCyberActionsWidget(widget, metricData) {
+  const settings = loadCyberSettings();
+  const rows = filterRows(metricData.recentActions || metricData.actions || [], widget.statusFilter || settings.actionStatuses, widget.maxRows || settings.maxRows);
+
+  return `
+    <section>
+      <h4>Сводка действий по статусам</h4>
+      ${renderSummary(metricData.actionStatusSummary, 'Сводка действий недоступна')}
+      <h4>Типы действий</h4>
+      ${renderSummary(metricData.actionTypeSummary, 'Типы действий недоступны')}
+      <h4>Последние действия</h4>
+      ${renderCyberTable(rows, 'actions')}
+    </section>
   `;
 }
 
@@ -80,7 +230,11 @@ function renderWidget(widget) {
   const body = article.querySelector('.widget-body');
 
   if (widget.type === 'stat') {
-    body.innerHTML = renderStat(widget, metricData);
+    body.innerHTML = renderStat(metricData);
+  } else if (widget.type === 'cyber-tasks') {
+    body.innerHTML = renderCyberTasksWidget(widget, metricData);
+  } else if (widget.type === 'cyber-actions') {
+    body.innerHTML = renderCyberActionsWidget(widget, metricData);
   } else if (widget.type === 'grafana') {
     body.innerHTML = widget.grafanaUrl
       ? `<iframe src="${widget.grafanaUrl}" loading="lazy"></iframe>`
@@ -136,6 +290,14 @@ async function refreshData() {
   renderDashboard();
 }
 
+function openCyberSettings() {
+  const settings = loadCyberSettings();
+  cyberForm.elements.taskStatuses.value = settings.taskStatuses;
+  cyberForm.elements.actionStatuses.value = settings.actionStatuses;
+  cyberForm.elements.maxRows.value = settings.maxRows;
+  cyberDialog.showModal();
+}
+
 async function init() {
   widgets = loadWidgets();
 
@@ -144,12 +306,12 @@ async function init() {
   providerSelect.innerHTML = providers.map((provider) => `<option value="${provider.id}">${provider.title}</option>`).join('');
 
   addWidgetBtn.addEventListener('click', () => openDialog());
+  cyberSettingsBtn.addEventListener('click', openCyberSettings);
 
-  typeSelect.addEventListener('change', () => {
-    grafanaWrap.classList.toggle('hidden', typeSelect.value !== 'grafana');
-  });
+  typeSelect.addEventListener('change', updateWidgetTypeControls);
 
   document.getElementById('cancel-btn').addEventListener('click', () => dialog.close());
+  document.getElementById('cyber-cancel-btn').addEventListener('click', () => cyberDialog.close());
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -161,6 +323,8 @@ async function init() {
       provider: data.get('provider'),
       type: data.get('type'),
       grafanaUrl: data.get('grafanaUrl')?.toString().trim(),
+      statusFilter: data.get('statusFilter')?.toString().trim(),
+      maxRows: Number(data.get('maxRows') || 8),
     };
 
     if (editingId) {
@@ -171,6 +335,20 @@ async function init() {
 
     saveWidgets();
     dialog.close();
+    renderDashboard();
+  });
+
+  cyberForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const data = new FormData(cyberForm);
+    const settings = {
+      taskStatuses: data.get('taskStatuses')?.toString().trim() || 'running,success,failed,warning',
+      actionStatuses: data.get('actionStatuses')?.toString().trim() || 'running,success,failed,warning',
+      maxRows: Number(data.get('maxRows') || 8),
+    };
+
+    saveCyberSettings(settings);
+    cyberDialog.close();
     renderDashboard();
   });
 
