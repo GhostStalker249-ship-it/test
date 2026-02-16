@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Backup Monitoring Center</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <header>
+      <h1>Централизованный мониторинг резервного копирования</h1>
+      <div class="toolbar">
+        <button id="add-widget-btn">Добавить виджет</button>
+        <span id="last-update">Обновление: —</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="dashboard" id="dashboard"></section>
+    </main>
+
+    <dialog id="widget-dialog">
+      <form method="dialog" id="widget-form">
+        <h2>Настройка виджета</h2>
+        <label>
+          Название
+          <input name="title" required />
+        </label>
+        <label>
+          Система
+          <select name="provider" required></select>
+        </label>
+        <label>
+          Тип
+          <select name="type" required>
+            <option value="line">Линейный график</option>
+            <option value="bar">Столбчатый график</option>
+            <option value="stat">Статистика</option>
+            <option value="grafana">Grafana панель (iframe)</option>
+          </select>
+        </label>
+        <label id="grafana-url-wrap" class="hidden">
+          URL панели Grafana
+          <input name="grafanaUrl" placeholder="https://grafana.example/d-solo/..." />
+        </label>
+
+        <menu>
+          <button type="button" value="cancel" id="cancel-btn">Отмена</button>
+          <button type="submit" value="default">Сохранить</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
