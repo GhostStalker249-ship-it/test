@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Backup Monitoring Center</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <header>
+      <h1>Централизованный мониторинг резервного копирования</h1>
+      <div class="toolbar">
+        <button id="cyber-settings-btn">Настройки Кибер Бекап</button>
+        <button id="ru-settings-btn">Настройки RuBackup</button>
+        <button id="add-widget-btn">Добавить виджет</button>
+        <span id="last-update">Обновление: —</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="dashboard" id="dashboard"></section>
+    </main>
+
+    <dialog id="widget-dialog">
+      <form method="dialog" id="widget-form">
+        <h2>Настройка виджета</h2>
+        <label>
+          Название
+          <input name="title" required />
+        </label>
+        <label>
+          Система
+          <select name="provider" required></select>
+        </label>
+        <label>
+          Тип
+          <select name="type" required>
+            <option value="line">Линейный график</option>
+            <option value="bar">Столбчатый график</option>
+            <option value="stat">Статистика</option>
+            <option value="cyber-tasks">Кибер Бекап: задачи</option>
+            <option value="cyber-actions">Кибер Бекап: действия</option>
+            <option value="ru-tasks">RuBackup: задачи</option>
+            <option value="ru-actions">RuBackup: действия</option>
+            <option value="grafana">Grafana панель (iframe)</option>
+          </select>
+        </label>
+        <label id="grafana-url-wrap" class="hidden">
+          URL панели Grafana
+          <input name="grafanaUrl" placeholder="https://grafana.example/d-solo/..." />
+        </label>
+        <label id="special-filter-wrap" class="hidden">
+          Фильтр статусов (через запятую)
+          <input name="statusFilter" placeholder="running,success,failed" />
+        </label>
+        <label id="max-rows-wrap" class="hidden">
+          Сколько записей показывать
+          <input name="maxRows" type="number" min="1" max="50" value="8" />
+        </label>
+
+        <menu>
+          <button type="button" value="cancel" id="cancel-btn">Отмена</button>
+          <button type="submit" value="default">Сохранить</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="cyber-settings-dialog">
+      <form method="dialog" id="cyber-settings-form">
+        <h2>Настройки получения данных Кибер Бекап</h2>
+        <p class="hint">
+          Настройте, какие статусы задач/действий считать важными для виджетов.
+          Это помогает быстро сфокусироваться на проблемах и активных операциях.
+        </p>
+        <label>
+          Статусы задач (через запятую)
+          <input name="taskStatuses" placeholder="running,success,failed,warning" required />
+        </label>
+        <label>
+          Статусы действий (через запятую)
+          <input name="actionStatuses" placeholder="running,success,failed,warning" required />
+        </label>
+        <label>
+          Максимум строк в спец-виджетах
+          <input name="maxRows" type="number" min="1" max="50" value="8" required />
+        </label>
+
+        <menu>
+          <button type="button" value="cancel" id="cyber-cancel-btn">Отмена</button>
+          <button type="submit" value="default">Сохранить</button>
+        </menu>
+      </form>
+    </dialog>
+
+
+    <dialog id="ru-settings-dialog">
+      <form method="dialog" id="ru-settings-form">
+        <h2>Настройки получения данных RuBackup</h2>
+        <p class="hint">
+          Выберите статусы задач и действий RuBackup, которые должны отображаться в специальных виджетах.
+        </p>
+        <label>
+          Статусы задач (через запятую)
+          <input name="taskStatuses" placeholder="running,success,failed,warning" required />
+        </label>
+        <label>
+          Статусы действий (через запятую)
+          <input name="actionStatuses" placeholder="running,success,failed,warning" required />
+        </label>
+        <label>
+          Максимум строк в спец-виджетах
+          <input name="maxRows" type="number" min="1" max="50" value="8" required />
+        </label>
+
+        <menu>
+          <button type="button" value="cancel" id="ru-cancel-btn">Отмена</button>
+          <button type="submit" value="default">Сохранить</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
