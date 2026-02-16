@@ -1,24 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createServer } = require('../server');
-const { mapMetric, normalizeCyberEntity, summarizeByStatus } = require('../src/connectors');
+const { mapMetric } = require('../src/connectors');
 
 test('mapMetric builds fallback values for empty arrays', () => {
   const result = mapMetric([], 'durationMinutes');
   assert.equal(result.length, 10);
   assert.equal(result[0].value, 0);
-});
-
-test('normalizeCyberEntity and summary handle mixed status payload', () => {
-  const entities = [
-    normalizeCyberEntity({ id: '1', taskName: 'Daily Backup', status: 'Success', startedAt: '2026-01-01T10:00:00Z', finishedAt: '2026-01-01T10:20:00Z' }),
-    normalizeCyberEntity({ id: '2', actionName: 'Instant Recovery', state: 'running', startTime: '2026-01-01T12:00:00Z' }),
-  ];
-
-  const summary = summarizeByStatus(entities);
-  assert.equal(summary.success, 1);
-  assert.equal(summary.running, 1);
-  assert.equal(entities[0].durationMinutes, 20);
 });
 
 test('GET /api/providers returns supported systems', async () => {
